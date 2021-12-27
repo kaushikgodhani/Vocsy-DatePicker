@@ -1,100 +1,137 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_datetime_picker/flutter_datetime_picker.dart';
-import 'package:intl/intl.dart';
 
-void main() => runApp(MyApp());
+void main() {
+  runApp(MyApp());
+}
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: MyHomePage(),
+      theme: ThemeData(primarySwatch: Colors.blue, brightness: Brightness.dark),
+      home: DatePickerDemo(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class DatePickerDemo extends StatefulWidget {
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _DatePickerDemoState createState() => _DatePickerDemoState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  var pickeddate;
-  var pickedtime;
+class _DatePickerDemoState extends State<DatePickerDemo> {
+  /// Which holds the selected date
+  /// Defaults to today's date.
+  DateTime selectedDate = DateTime.now();
+
+  /// This decides which day will be enabled
+  /// This will be called every time while displaying day in calender.
+  bool _decideWhichDayToEnable(DateTime day) {
+    if ((day.isAfter(DateTime.now().subtract(Duration(days: 1))) &&
+        day.isBefore(DateTime.now().add(Duration(days: 10))))) {
+      return true;
+    }
+    return false;
+  }
+
+  _selectDate(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    assert(theme.platform != null);
+    switch (theme.platform) {
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+        return buildMaterialDatePicker(context);
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return buildCupertinoDatePicker(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: Text("Flutter Date time Picker"),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            new GestureDetector(
+              onTap: () => _selectDate(context),
+              child: Text(
+                "${selectedDate.toLocal()}".split(' ')[0],
+                style: TextStyle(fontSize: 55, fontWeight: FontWeight.bold),
+              ),
+            ),
+            SizedBox(
+              height: 20.0,
+            ),
+            RaisedButton(
+              onPressed: () => _selectDate(context),
+              child: Text(
+                'Select date',
+                style:
+                    TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+              ),
+              color: Colors.greenAccent,
+            ),
+          ],
         ),
-        body: Center(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: <Widget>[
-              SizedBox(
-                height: 50.0,
-              ),
-              FloatingActionButton.extended(
-                onPressed: () {
-                  DatePicker.showTime12hPicker(context,
-                      showTitleActions: true,
-                      currentTime: DateTime.now(), onConfirm: (time) {
-                    setState(() {
-                      pickedtime =
-                          "Picked time is : ${time.hour} : ${time.minute} : ${time.second}";
-                    });
+      ),
+    );
+  }
+
+  buildCupertinoDatePicker(BuildContext context) {
+    showModalBottomSheet(
+        context: context,
+        builder: (BuildContext builder) {
+          return Container(
+            height: MediaQuery.of(context).copyWith().size.height / 3,
+            color: Colors.white,
+            child: CupertinoDatePicker(
+              mode: CupertinoDatePickerMode.date,
+              onDateTimeChanged: (picked) {
+                if (picked != null && picked != selectedDate)
+                  setState(() {
+                    selectedDate = picked;
                   });
-                },
-                label: Text("Set Time"),
-                icon: Icon(Icons.timer),
-              ),
-              SizedBox(
-                height: 25,
-              ),
-              FloatingActionButton.extended(
-                onPressed: () {
-                  DatePicker.showDatePicker(context,
-                      showTitleActions: true,
-                      minTime: DateTime(2018, 3, 5),
-                      maxTime: DateTime(2026, 6, 7), onChanged: (date) {
-                    print('change $date');
-                    setState(() {
-                      pickeddate = "${date.day}";
-                    });
-                  }, onConfirm: (date) {
-                    print('confirm $date');
-                    setState(() {
-                      pickeddate =
-                          "Picked Date is : ${date.day}/${date.month}/${date.year}";
-                    });
-                  }, currentTime: DateTime.now(), locale: LocaleType.en);
-                },
-                label: Text("Set Date"),
-                icon: Icon(Icons.date_range),
-              ),
-              SizedBox(
-                height: 50,
-              ),
-              Container(
-                child: (pickeddate == null)
-                    ? Text("${DateFormat('dd/MM/yyyy').format(DateTime.now())}")
-                    : Text("$pickeddate"),
-              ),
-              SizedBox(
-                height: 30,
-              ),
-              Container(
-                child: (pickedtime == null)
-                    ? Text("Select a time Please")
-                    : Text("$pickedtime"),
-              ),
-            ],
-          ),
-        ));
+              },
+              initialDateTime: selectedDate,
+              minimumYear: 2000,
+              maximumYear: 2025,
+            ),
+          );
+        });
+  }
+
+  buildMaterialDatePicker(BuildContext context) async {
+    final DateTime picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2025),
+      initialEntryMode: DatePickerEntryMode.calendar,
+      initialDatePickerMode: DatePickerMode.day,
+      selectableDayPredicate: _decideWhichDayToEnable,
+      helpText: 'Select booking date',
+      cancelText: 'Not now',
+      confirmText: 'Book',
+      errorFormatText: 'Enter valid date',
+      errorInvalidText: 'Enter date in valid range',
+      fieldLabelText: 'Booking date',
+      fieldHintText: 'Month/Date/Year',
+      builder: (context, child2) {
+        return Theme(
+          data: ThemeData.light(),
+          child: child2,
+        );
+      },
+    );
+    if (picked != null && picked != selectedDate)
+      setState(() {
+        selectedDate = picked;
+      });
   }
 }
